@@ -307,7 +307,6 @@ DIST          = /Users/ibragim.kardanov/Qt/6.11.2/macos/mkspecs/features/spec_pr
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/mkspecs/features/yacc.prf \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/mkspecs/features/lex.prf \
 		../../../../TaskTrackerDemo.pro ../../mainwindow.h \
-		../../widgets.h \
 		../../widgets.h ../../main.cpp \
 		../../mainwindow.cpp
 QMAKE_TARGET  = TaskTrackerDemo
@@ -854,7 +853,7 @@ dist: distdir FORCE
 distdir: FORCE
 	@test -d $(DISTDIR) || mkdir -p $(DISTDIR)
 	$(COPY_FILE) --parents $(DIST) $(DISTDIR)/
-	$(COPY_FILE) --parents ../../mainwindow.h ../../widgets.h ../../widgets.h $(DISTDIR)/
+	$(COPY_FILE) --parents ../../mainwindow.h ../../widgets.h $(DISTDIR)/
 	$(COPY_FILE) --parents ../../main.cpp ../../mainwindow.cpp $(DISTDIR)/
 
 
@@ -891,6 +890,8 @@ moc_mainwindow.cpp: ../../mainwindow.h \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QWidget \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtCore.framework/Headers/QPointer \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QVBoxLayout \
+		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtCore.framework/Headers/QTimer \
+		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QFormLayout \
 		../../widgets.h \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtCore.framework/Headers/QDebug \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QLabel \
@@ -922,6 +923,8 @@ main.o: ../../main.cpp ../../mainwindow.h \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QWidget \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtCore.framework/Headers/QPointer \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QVBoxLayout \
+		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtCore.framework/Headers/QTimer \
+		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QFormLayout \
 		../../widgets.h \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtCore.framework/Headers/QDebug \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QLabel \
@@ -935,12 +938,19 @@ mainwindow.o: ../../mainwindow.cpp ../../mainwindow.h \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QWidget \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtCore.framework/Headers/QPointer \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QVBoxLayout \
+		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtCore.framework/Headers/QTimer \
+		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QFormLayout \
 		../../widgets.h \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtCore.framework/Headers/QDebug \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QLabel \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QLineEdit \
 		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QPushButton \
-		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QFrame
+		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QFrame \
+		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtCore.framework/Headers/QDateTime \
+		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtGui.framework/Headers/QResizeEvent \
+		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QSizePolicy \
+		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtWidgets.framework/Headers/QHBoxLayout \
+		/Users/ibragim.kardanov/Qt/6.11.2/macos/lib/QtGui.framework/Headers/QIntValidator
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o mainwindow.o ../../mainwindow.cpp
 
 moc_mainwindow.o: moc_mainwindow.cpp 

@@ -1,6 +1,8 @@
 QT += core gui widgets
 
-CONFIG += c++17 console
+CONFIG += c++17
+# На macOS console может мешать открытию окна, но для логов оставь как есть
+# CONFIG += console
 CONFIG -= app_bundle
 
 TARGET = TaskTrackerDemo
@@ -12,5 +14,4 @@ SOURCES += \
 
 HEADERS += \
     mainwindow.h \
-    widgets.h \
     widgets.h

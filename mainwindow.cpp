@@ -1,5 +1,10 @@
 #include "mainwindow.h"
 #include <QDateTime>   // НОВОЕ (ЛР3): метка времени для логов
+#include <QDebug>
+#include <QResizeEvent> // НОВОЕ (ЛР4)
+#include <QSizePolicy>  // НОВОЕ (ЛР4)
+#include <QHBoxLayout>
+#include <QIntValidator>
 
 // ============================================================
 //  КОНСТРУКТОР / ДЕСТРУКТОР
@@ -9,7 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     setupUi();
     // НОВОЕ (ЛР3): после построения интерфейса запускаем автосохранение.
-    // ЗАЩИТА: порядок важен — setupUi() создаёт m_status, куда пишет
+    //  порядок важен — setupUi() создаёт m_status, куда пишет
     // лямбда автосохранения. Если вызвать setupAutoSave() раньше,
     // первое срабатывание (через 60 с) обратится к nullptr.
     setupAutoSave();
@@ -25,78 +30,226 @@ MainWindow::~MainWindow()
 }
 
 // ============================================================
-//  ПОСТРОЕНИЕ ИНТЕРФЕЙСА (ЛР2, без изменений)
+//  НОВОЕ (ЛР4): ЛОГИРОВАНИЕ РАЗМЕРА ОКНА
+// ============================================================
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    qDebug() << "[RESIZE] MainWindow ->"
+             << event->size().width() << "x" << event->size().height();
+}
+
+// ============================================================
+//  ПОСТРОЕНИЕ ИНТЕРФЕЙСА (ЛР2, ЛР3, ЛР4)
 // ============================================================
 void MainWindow::setupUi()
 {
-    setWindowTitle("Трекер задач: Дерево объектов");
-    resize(500, 600);
+    setWindowTitle("Трекер задач: ЛР4 (Адаптивность)");
+    resize(700, 600); // Чуть шире для новых элементов
     setObjectName("MainWindow");
 
+    // НОВОЕ (ЛР4): Корневой Layout с отступами
     m_rootLayout = new QVBoxLayout(this);
+    m_rootLayout->setContentsMargins(16, 16, 16, 16);
+    m_rootLayout->setSpacing(10);
 
     m_title = new LogLabel("Управление задачами (демо)", this);
     m_rootLayout->addWidget(m_title.data());
 
-    m_input = new LogLineEdit(this);
-    m_input->setPlaceholderText("Введите текст задачи...");
-    m_rootLayout->addWidget(m_input.data());
+    // ============================================================
+    // НОВОЕ (ЛР4): АДАПТИВНАЯ ФОРМА ДОБАВЛЕНИЯ ЗАДАЧИ
+    // ============================================================
+    //  Обнуляем отступы, чтобы не было двойных отступов с корневым Layout.
+    m_addTaskForm = new QFormLayout();
+    m_addTaskForm->setContentsMargins(0, 0, 0, 0);
+    //  Позволяем форме тянуть поля (иначе на macOS они застынут).
+    m_addTaskForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
 
-    m_status = new LogLabel("Статус: окно создано", this);
-    m_status->setWordWrap(true);
-    m_rootLayout->addWidget(m_status.data());
+    // Поле "Название" (тянется вширь)
+    m_taskNameInput = new LogLineEdit(this);
+    m_taskNameInput->setPlaceholderText("Введите текст задачи...");
+    m_taskNameInput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_addTaskForm->addRow("Название:", m_taskNameInput.data());
 
-    // Панель задач — здесь живут «задачи» (ЛР2: дерево объектов).
+    // Поле "Приоритет" (Fixed + пружина)
+    m_taskPriorityInput = new LogLineEdit(this);
+    m_taskPriorityInput->setPlaceholderText("1-5");
+    m_taskPriorityInput->setValidator(new QIntValidator(1, 5, m_taskPriorityInput.data()));
+    m_taskPriorityInput->setMinimumWidth(50);
+    m_taskPriorityInput->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    auto *priorityRow = new QHBoxLayout();
+    priorityRow->setContentsMargins(0, 0, 0, 0);
+    priorityRow->addWidget(m_taskPriorityInput.data());
+    priorityRow->addStretch(); // ЗАЩИТА: пружина оставляет поле коротким
+    m_addTaskForm->addRow("Приоритет:", priorityRow);
+
+    m_rootLayout->addLayout(m_addTaskForm.data());
+
+    // ============================================================
+    //  ПАНЕЛЬ ЗАДАЧ (ЛР2 + Адаптивность ЛР4)
+    // ============================================================
     m_taskListPanel = new LogPanel("Панель задач", this);
-    m_rootLayout->addWidget(m_taskListPanel.data());
+    // Expanding по обеим осям — панель забирает всё свободное место.
+    m_taskListPanel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_rootLayout->addWidget(m_taskListPanel.data(), 1); // stretch = 1
 
     m_panelLayout = new QVBoxLayout(m_taskListPanel.data());
+    m_panelLayout->setContentsMargins(8, 8, 8, 8);
 
     LogButton *staticTask = new LogButton("Задача 1 (статическая)", m_taskListPanel.data());
     m_panelLayout->addWidget(staticTask);
 
     m_movableBtn = new LogButton("Задача 2 (перемещаемая)", m_taskListPanel.data());
     m_panelLayout->addWidget(m_movableBtn.data());
+    m_panelLayout->addStretch(); // Задачи прижаты к верху
 
-    // Кнопки управления (ЛР2).
-    m_moveButton = new LogButton("Переместить Задачу 2: панель <-> окно", this);
+    // ============================================================
+    //  НОВОЕ (ЛР4): НИЖНЯЯ ПАНЕЛЬ КНОПОК
+    // ============================================================
+    auto *btnRow = new QHBoxLayout();
+    btnRow->setContentsMargins(0, 0, 0, 0);
+
+    m_addBtn      = new LogButton("Добавить", this);
+    m_deleteBtn   = new LogButton("Удалить", this);
+    m_saveBtn     = new LogButton("Сохранить", this);
+    m_settingsBtn = new LogButton("Настройки", this);
+
+    //  Кнопки фиксированы, чтобы не растягивались на пол-экрана.
+    m_addBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    m_deleteBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    m_saveBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    m_settingsBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    btnRow->addWidget(m_addBtn.data());
+    btnRow->addWidget(m_deleteBtn.data());
+    btnRow->addWidget(m_saveBtn.data());
+    //  Пружина раздвигает кнопки: левые — влево, "Настройки" — вправо.
+    btnRow->addStretch();
+    btnRow->addWidget(m_settingsBtn.data());
+    m_rootLayout->addLayout(btnRow);
+
+    // ============================================================
+    //  НОВОЕ (ЛР4): ПАНЕЛЬ РЕЖИМОВ
+    // ============================================================
+    auto *modeRow = new QHBoxLayout();
+    modeRow->setContentsMargins(0, 0, 0, 0);
+    m_compactBtn = new LogButton("Компактный", this);
+    m_comfortBtn = new LogButton("Удобный", this);
+    m_dumpBtn    = new LogButton("Дамп политик", this);
+
+    modeRow->addWidget(m_compactBtn.data());
+    modeRow->addWidget(m_comfortBtn.data());
+    modeRow->addStretch();
+    modeRow->addWidget(m_dumpBtn.data());
+    m_rootLayout->addLayout(modeRow);
+
+    m_status = new LogLabel("Статус: окно создано", this);
+    m_status->setWordWrap(true);
+    m_rootLayout->addWidget(m_status.data());
+
+    // ============================================================
+    //  ПОДКЛЮЧЕНИЕ СИГНАЛОВ
+    // ============================================================
+    // ЛР2: Перемещение и удаление
     connect(m_moveButton.data(), &QPushButton::clicked, this, &MainWindow::moveMovableWidget);
-    m_rootLayout->addWidget(m_moveButton.data());
-
-    m_deleteButton = new LogButton("Удалить панель задач (deleteLater)", this);
     connect(m_deleteButton.data(), &QPushButton::clicked, this, &MainWindow::deletePanel);
-    m_rootLayout->addWidget(m_deleteButton.data());
 
-    LogButton *detachBtn = new LogButton("Демо setParent(nullptr)", this);
-    connect(detachBtn, &QPushButton::clicked, this, &MainWindow::demoDetaching);
-    m_rootLayout->addWidget(detachBtn);
+    // ЛР4: Кнопки нижней панели
+    connect(m_addBtn.data(), &QPushButton::clicked, this, &MainWindow::onAddTask);
+    connect(m_deleteBtn.data(), &QPushButton::clicked, this, &MainWindow::onDeleteTask);
+    connect(m_saveBtn.data(), &QPushButton::clicked, this, &MainWindow::onSave);
+    connect(m_settingsBtn.data(), &QPushButton::clicked, this, &MainWindow::onSettings);
 
-    m_rootLayout->addStretch();
+    // ЛР4: Режимы
+    connect(m_compactBtn.data(), &QPushButton::clicked, this, &MainWindow::setCompactMode);
+    connect(m_comfortBtn.data(), &QPushButton::clicked, this, &MainWindow::setComfortableMode);
+    connect(m_dumpBtn.data(), &QPushButton::clicked, this, &MainWindow::dumpSizePolicies);
 
     // ============================================================
     // НОВОЕ (ЛР3): ЛОГИРОВАНИЕ ДЕЙСТВИЙ ПОЛЬЗОВАТЕЛЯ
     // ============================================================
     //  это ЛЯМБДА-СЛОТЫ. Ключевые моменты:
     //  1. Захват [this] — лямбда получает доступ к методам MainWindow.
-    //     Захват по значению ([=]) здесь тоже сработал бы, но [this]
-    //     это стандарт для слотов класса и дешевле по копированию.
-    //  2. Третий аргумент connect() — контекст (this). Он привязывает
-    //     время жизни соединения к MainWindow. Если окно удалят,
-    //     Qt автоматически разорвёт соединение — лямбда не вызовется
-    //     с висячим указателем (защита от use-after-free).
-    //  3. Антипаттерн [&] здесь был бы ОПАСЕН, если бы захватывали
-    //     локальные переменные — после выхода из setupUi() они мертвы.
-    connect(m_moveButton.data(), &QPushButton::clicked, this, [this]() {
-        logUserAction("Пользователь нажал «Переместить задачу»");
+    //  2. Третий аргумент connect() — контекст (this). Защита от use-after-free.
+    //  3. Антипаттерн [&] здесь был бы ОПАСЕН (локальные переменные мертвы).
+    connect(m_addBtn.data(), &QPushButton::clicked, this, [this]() {
+        logUserAction("Пользователь нажал «Добавить»");
     });
-    connect(m_deleteButton.data(), &QPushButton::clicked, this, [this]() {
-        logUserAction("Пользователь нажал «Удалить панель»");
-    });
-    connect(detachBtn, &QPushButton::clicked, this, [this]() {
-        logUserAction("Пользователь нажал «Демо setParent(nullptr)»");
+    connect(m_deleteBtn.data(), &QPushButton::clicked, this, [this]() {
+        logUserAction("Пользователь нажал «Удалить»");
     });
 
+    // Список для дампа (ЛР4)
+    m_trackedFields = {
+        m_taskNameInput.data(), m_taskPriorityInput.data(),
+        m_taskListPanel.data(), m_addBtn.data(), m_deleteBtn.data()
+    };
+
     setStatus("Готово. Все объекты имеют родителей.");
+}
+
+// ============================================================
+//  НОВОЕ (ЛР4): СЛОТЫ РЕЖИМОВ И ДАМПА
+// ============================================================
+void MainWindow::setCompactMode()
+{
+    m_rootLayout->setContentsMargins(4, 4, 4, 4);
+    m_rootLayout->setSpacing(4);
+    m_rootLayout->invalidate();
+    setStatus("Компактный режим.");
+}
+
+void MainWindow::setComfortableMode()
+{
+    m_rootLayout->setContentsMargins(16, 16, 16, 16);
+    m_rootLayout->setSpacing(10);
+    m_rootLayout->invalidate();
+    setStatus("Удобный режим.");
+}
+
+void MainWindow::dumpSizePolicies()
+{
+    qDebug() << "===== DUMP SIZE POLICIES =====";
+    for (const QWidget *w : std::as_const(m_trackedFields)) {
+        if (!w) continue;
+        qDebug() << w->metaObject()->className()
+                 << " H=" << int(w->sizePolicy().horizontalPolicy())
+                 << " V=" << int(w->sizePolicy().verticalPolicy());
+    }
+}
+
+// ============================================================
+//  НОВОЕ (ЛР4): СЛОТЫ КНОПОК НИЖНЕЙ ПАНЕЛИ
+// ============================================================
+void MainWindow::onAddTask()
+{
+    if (m_taskNameInput->text().isEmpty()) {
+        setStatus("Ошибка: введите название задачи!");
+        return;
+    }
+    qDebug() << "[ADD] Задача:" << m_taskNameInput->text()
+             << " Приоритет:" << m_taskPriorityInput->text();
+    setStatus("Задача добавлена (симуляция).");
+    m_taskNameInput->clear();
+}
+
+void MainWindow::onDeleteTask()
+{
+    qDebug() << "[DELETE] Удаление выбранной задачи (симуляция).";
+    setStatus("Задача удалена (симуляция).");
+}
+
+void MainWindow::onSave()
+{
+    qDebug() << "[SAVE] Ручное сохранение данных...";
+    setStatus("Данные сохранены.");
+}
+
+void MainWindow::onSettings()
+{
+    qDebug() << "[SETTINGS] Открытие настроек (симуляция).";
+    setStatus("Открытие настроек...");
 }
 
 // ============================================================
@@ -104,33 +257,20 @@ void MainWindow::setupUi()
 // ============================================================
 void MainWindow::setupAutoSave()
 {
-    // Интервал — 60 секунд (60000 мс). Артефакт лабораторной:
-    // «автосохранение раз в 60 секунд».
-    // ЗАЩИТА: interval() задаётся в МИЛЛИСЕКУНДАХ — это ключевой
-    // момент QTimer. 60 * 1000 = 60000.
+    // Интервал — 60 секунд (60000 мс).
+    // ЗАЩИТА: interval() задаётся в МИЛЛИСЕКУНДАХ. 60 * 1000 = 60000.
     m_autoSaveTimer.setInterval(60000);
 
     // Подключаем сигнал timeout() к лямбда-слоту.
-    // ЗАЩИТА: QTimer не «тикает» сам по себе в реальном времени —
-    // он регистрируется в цикле событий (event loop) и просит Qt
-    // вызвать timeout(), когда управление вернётся в app.exec().
-    // Без app.exec() таймер НИКОГДА не сработает.
+    // ЗАЩИТА: Без app.exec() таймер НИКОГДА не сработает.
     connect(&m_autoSaveTimer, &QTimer::timeout, this, [this]() {
-        const QString timestamp = QDateTime::currentDateTime()
-        .toString("hh:mm:ss");
+        const QString timestamp = QDateTime::currentDateTime().toString("hh:mm:ss");
         // Логируем «сохранение» в консоль.
-        // ЗАЩИТА: в реальном проекте здесь было бы QFile/QSettings,
-        // но по методичке ЛР3 артефакт — именно автосохранение через
-        // QTimer с логированием. Файловый ввод-вывод — тема следующих лаб.
         qDebug() << "[AUTOSAVE]" << timestamp << "Автосохранение данных...";
         setStatus(QString("Автосохранение выполнено в %1").arg(timestamp));
     });
 
-    // start() без аргументов запускает ПОВТОРЯЮЩИЙСЯ таймер
-    // с текущим interval(). Если нужно один раз — был бы singleShot()
-    // или start(ms).
     m_autoSaveTimer.start();
-
     qDebug() << "[AUTOSAVE] Таймер автосохранения запущен, интервал 60 с.";
 }
 
@@ -139,12 +279,7 @@ void MainWindow::setupAutoSave()
 // ============================================================
 void MainWindow::logUserAction(const QString &action)
 {
-    // Общий хелпер: пишет действие с меткой времени.
-    // ЗАЩИТА: вызов qDebug() виден в панели «Вывод приложения»
-    // (Application Output) в Qt Creator. На macOS отдельная консоль
-    // не открывается — это нормально.
-    const QString timestamp = QDateTime::currentDateTime()
-                                  .toString("hh:mm:ss");
+    const QString timestamp = QDateTime::currentDateTime().toString("hh:mm:ss");
     qDebug() << "[USER ACTION]" << timestamp << action;
 }
 
@@ -153,9 +288,6 @@ void MainWindow::logUserAction(const QString &action)
 // ============================================================
 void MainWindow::setStatus(const QString &text)
 {
-    // ЗАЩИТА: проверка isNull() — потому что m_status — это QPointer.
-    // Если объект уже удалён, QPointer автоматически стал nullptr,
-    // и обращение к нему без проверки упало бы.
     if (!m_status.isNull()) m_status->setText(text);
 }
 
@@ -164,8 +296,6 @@ void MainWindow::moveMovableWidget()
     if (m_movableBtn.isNull() || m_taskListPanel.isNull()) return;
 
     if (m_movableBtn->parentWidget() == m_taskListPanel.data()) {
-        // ЗАЩИТА (ЛР2): setParent() переносит объект из дерева панели
-        // в дерево главного окна. Теперь удаление панели НЕ удалит кнопку.
         m_panelLayout->removeWidget(m_movableBtn.data());
         m_movableBtn->setParent(this);
         m_rootLayout->addWidget(m_movableBtn.data());
@@ -193,30 +323,21 @@ void MainWindow::deletePanel()
 
     m_deleteButton->setEnabled(false);
     m_moveButton->setEnabled(false);
-
-    // ЗАЩИТА (ЛР2): deleteLater() безопаснее delete, потому что
-    // откладывает удаление до конца текущей итерации цикла событий.
-    // Если удалить объект прямо внутри обработчика его же сигнала —
-    // получим use-after-free.
     m_taskListPanel->deleteLater();
 }
 
 void MainWindow::demoDetaching()
 {
     LogPanel *tempPanel = new LogPanel("Временная панель", this);
-
     LogLabel *taskA = new LogLabel("Задача А (остается)", tempPanel);
     LogLabel *taskB = new LogLabel("Задача Б (отвязывается)", tempPanel);
 
     qDebug() << "DEMO: Задач до detach:" << tempPanel->children().size();
-
-    // ЗАЩИТА (ЛР2): setParent(nullptr) отвязывает объект от дерева.
-    // Теперь он не удалится вместе с панелью — за него отвечаем мы.
     taskB->setParent(nullptr);
     qDebug() << "DEMO: Задач после detach:" << tempPanel->children().size();
 
-    tempPanel->deleteLater(); // Удаляем панель (Задача А умрет)
-    taskB->deleteLater();     // Вручную удаляем отвязанную Задачу Б
+    tempPanel->deleteLater();
+    taskB->deleteLater();
 
     Q_UNUSED(taskA);
     setStatus("Создана временная панель. Задача Б отвязана и удалена вручную.");
